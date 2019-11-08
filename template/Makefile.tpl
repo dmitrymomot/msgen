@@ -9,7 +9,7 @@ help: ## Show this help
 {{if .RPC}}
 .PHONY: proto
 proto: ## Compile protobuf for golang
-	protoc -I /usr/local/include -I . \
+	@protoc -I /usr/local/include -I . \
 		-I$(GOPATH)/src \
 		-I ${GOPATH}/src/github.com/envoyproxy/protoc-gen-validate \
 		--go_out=plugins=grpc:. \
@@ -20,7 +20,7 @@ proto: ## Compile protobuf for golang
 .PHONY: build
 build: {{if .RPC}}proto{{end}} ## Build application{{if .RPC}} and compile protobuf for golang{{end}}
 	@go clean
-	CGO_ENABLED=0 \
+	@CGO_ENABLED=0 \
 	GOOS=linux \
 	GOARCH=amd64 \
 	go build \
@@ -30,15 +30,15 @@ build: {{if .RPC}}proto{{end}} ## Build application{{if .RPC}} and compile proto
 
 .PHONY: docker
 docker: ## Build docker image
-	docker build . -t {{ .ServiceName }}:latest
+	@docker build . -t {{ .ServiceName }}:latest
 {{if .K8s}}
 .PHONY: deploy
 deploy: ## Deploy pods to kubernetes
-	kubectl apply -f k8s.yml
+	@kubectl apply -f k8s.yml
 
 .PHONY: down
 down: ## Down pods
-	kubectl delete -f k8s.yml
+	@kubectl delete -f k8s.yml
 
 .PHONY: reload
 reload: down deploy info ## Reload after app was rebuilt
