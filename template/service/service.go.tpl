@@ -4,7 +4,6 @@ import (
 	"{{ .ServicePath }}/pb/{{ package .ServiceName }}"
 	{{ if .DB }}"github.com/go-pg/pg/v9"{{ end }}
 	{{ if .Jobs }}"github.com/gocraft/work"{{ end }}
-	"go.uber.org/zap"
 )
 
 type service struct {

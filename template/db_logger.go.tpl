@@ -4,7 +4,6 @@ import (
 	ctx "context"
 
 	"github.com/go-pg/pg/v9"
-	"go.uber.org/zap"
 )
 
 type dbLogger struct {
