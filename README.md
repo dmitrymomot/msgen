@@ -29,6 +29,7 @@ msgen -h
 ## Usage
 
 Let's create simple HTTP-RPC microservice with one method and exposed port via kubernetes load balancer service
+> Run `msgen --help` to get more details about available options
 ```
 msgen --twirp --rpc_methods=test_call --http_lb test-http-srv
 ```
@@ -52,6 +53,10 @@ The command above generates next files
 Move into test-http-srv and run service
 ```
 cd test-http-srv && make build docker && docker run -d  -p 8888:8888 test-http-srv:latest
+```
+or if you have installed kubernetes
+```
+cd test-http-srv && make build docker deploy
 ```
 Check it in terminal
 ```
