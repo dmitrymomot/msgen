@@ -25,11 +25,11 @@ import (
 	"github.com/go-pg/pg/v9/orm"{{end}}
 	{{if .Jobs}}"github.com/gocraft/work"{{end}}
 	{{if .RedisPool}}"github.com/gomodule/redigo/redis"{{end}}
-	"github.com/google/uuid"
-	{{if .Nats}}"github.com/nats-io/nats.go"{{end}}
+	{{if .DB}}"github.com/google/uuid"{{end}}
+	{{if .Nats}}"github.com/nats-io/nats.go"
+	"go.uber.org/zap"{{end}}
 	"github.com/pkg/errors"
 	"golang.org/x/sync/errgroup"
-	"go.uber.org/zap"
 	{{if .Grpc}}"google.golang.org/grpc"{{end}}
 )
 
@@ -171,11 +171,10 @@ func main() {
 	eg.Go(func() error {
 		ticker := time.NewTicker(5 * time.Second)
 		defer ticker.Stop()
-		uuid := uuid.New().String()
 		for {
 			select {
 			case {{ asis "<-" }}ticker.C:
-				msg := fmt.Sprintf("publisher %s: Current time is %s", uuid, time.Now().String())
+				msg := fmt.Sprintf("publisher {{ .ServiceName }}: Current time is %s", time.Now().String())
 				log.Debug(msg)
 				nc.Publish(*natsQueueSubject, []byte(msg))
 			case {{ asis "<-" }}ctx.Done():
