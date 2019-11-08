@@ -2,11 +2,11 @@ package main
 
 import (
 	"time"
-
+	"{{ .ServicePath }}/logger"
 	"github.com/nats-io/nats.go"
 )
 
-func setupNatsConnOptions(log *Logger, opts []nats.Option) []nats.Option {
+func setupNatsConnOptions(log *logger.Logger, opts []nats.Option) []nats.Option {
 	totalWait := 10 * time.Minute
 	reconnectDelay := time.Second
 

@@ -1,6 +1,7 @@
 package src
 
 import (
+	"path/filepath"
 	"strings"
 )
 
@@ -35,9 +36,61 @@ func getDefaultFilesList(serviceName string) []file {
 		file{Template: "gitignore.tpl", Path: ".gitignore"},
 		newFile("Dockerfile.tpl", serviceName),
 		newFile("go.mod.tpl", serviceName),
-		newFile("logger.go.tpl", serviceName),
+		newFile("logger/logger.go.tpl", serviceName),
 		newFile("main.go.tpl", serviceName),
 		newFile("Makefile.tpl", serviceName),
 		newFile("README.md.tpl", serviceName),
 	}
+}
+
+func getFilesList(opt options) []file {
+	files := getDefaultFilesList(opt.ServiceName)
+
+	if opt.RPC {
+		files = append(files, newFile("pb/examplesrv/service.proto.tpl", opt.ServiceName))
+		files = append(files, newFile("service/service.go.tpl", opt.ServiceName))
+	}
+
+	if opt.RedisPool {
+		files = append(files, newFile("redis.go.tpl", opt.ServiceName))
+	}
+
+	if opt.Jobs != nil && len(opt.Jobs) > 0 {
+		files = append(files, newFile("jobs/worker.go.tpl", opt.ServiceName))
+		for _, job := range opt.Jobs {
+			filename := strings.ReplaceAll(filepath.Base(strings.ToLower(job)), "-", "_") + ".go"
+			files = append(files, newCustomFile("jobs/job.go.tpl", filename, opt.ServiceName, map[string]interface{}{
+				"jobTitle": ToTitle(job),
+				"jobName":  job,
+			}))
+		}
+	}
+
+	if opt.RPCMethods != nil && len(opt.RPCMethods) > 0 {
+		for _, method := range opt.RPCMethods {
+			filename := filepath.Join("service", strings.ReplaceAll(filepath.Base(strings.ToLower(method)), "-", "_")+".go")
+			files = append(files, newCustomFile("service/method.go.tpl", filename, opt.ServiceName, map[string]interface{}{
+				"methodTitle": ToTitle(method),
+				"methodName":  method,
+			}))
+		}
+	}
+
+	if opt.ClientHelper {
+		files = append(files, newFile("client/client.go.tpl", opt.ServiceName))
+	}
+
+	if opt.DB != nil {
+		files = append(files, newFile("logger/db_logger.go.tpl", opt.ServiceName))
+	}
+
+	if opt.K8s {
+		files = append(files, newFile("k8s.yml.tpl", opt.ServiceName))
+	}
+
+	if opt.Nats {
+		files = append(files, newFile("nats.go.tpl", opt.ServiceName))
+	}
+
+	return files
 }

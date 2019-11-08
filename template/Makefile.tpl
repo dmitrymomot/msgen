@@ -26,7 +26,7 @@ build: {{if .RPC}}proto{{end}} ## Build application{{if .RPC}} and compile proto
 	go build \
 	-a -installsuffix nocgo \
 	-ldflags "-X main.buildTag=`date -u +%Y%m%d.%H%M%S`-$(LATEST_COMMIT)" \
-	-o app .
+	-o {{ .ServiceName }} .
 
 .PHONY: docker
 docker: ## Build docker image

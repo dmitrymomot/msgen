@@ -2,12 +2,12 @@ package main
 
 import (
 	"context"
-	"crypto/tls"
-	"crypto/x509"
+	{{if .TLS}}"crypto/tls"
+	"crypto/x509"{{end}}
 	"flag"
 	"fmt"
 	"io/ioutil"
-	"net"
+	{{if .Grpc}}"net"{{end}}
 	"net/http"
 	"os"
 	"os/signal"
@@ -17,6 +17,7 @@ import (
 	{{if .ClientHelper}}"{{ .ServicePath }}/client"{{end}}
 	{{if .Jobs}}"{{ .ServicePath }}/jobs"{{end}}
 	"{{ .ServicePath }}/pb/{{ package .ServiceName }}"
+	"{{ .ServicePath }}/logger"
 	"{{ .ServicePath }}/service"
 	{{if .HTTP}}"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"{{end}}
@@ -65,7 +66,11 @@ func main() {
 	flag.Parse()
 
 	// Set up logger
-	log := defaultLogger(*debug)
+	log := logger.DefaultLogger(logger.Options{
+		Debug:       *debug,
+		ServiceName: serviceName,
+		BuildTag:    buildTag,
+	})
 	defer log.Sync()
 
 	// Listen interrupt signal from OS
@@ -106,7 +111,7 @@ func main() {
 
 	if *debug {
 		// Log each database query
-		db.AddQueryHook(newDBLogger(log))
+		db.AddQueryHook(logger.NewDBLogger(log))
 	}
 
 	if err := db.CreateTable(&struct {
@@ -164,13 +169,14 @@ func main() {
 
 	{{if .Pub}}
 	eg.Go(func() error {
-		ticker := time.NewTicker(2 * time.Minute)
+		ticker := time.NewTicker(5 * time.Second)
 		defer ticker.Stop()
 		uuid := uuid.New().String()
 		for {
 			select {
 			case {{ asis "<-" }}ticker.C:
 				msg := fmt.Sprintf("publisher %s: Current time is %s", uuid, time.Now().String())
+				log.Debug(msg)
 				nc.Publish(*natsQueueSubject, []byte(msg))
 			case {{ asis "<-" }}ctx.Done():
 				return nil
@@ -181,14 +187,14 @@ func main() {
 
 	{{if .RPC}}
 	// Init RPC service
-	{{ camel .ServiceName }} := service.New(log{{if .DB}}, db{{end}}{{if .Jobs}}, enqueuer{{end}})
+	{{ camel .ServiceName }}Service := service.New(log{{if .DB}}, db{{end}}{{if .Jobs}}, enqueuer{{end}})
 	{{end}}
 
 	{{if .Grpc}}
 	// Set up grpc server
 	grpcServer = grpc.NewServer()
 	// Registering of grpc services
-	{{ package .ServiceName }}.RegisterServiceServer(grpcServer, {{ camel .ServiceName }})
+	{{ package .ServiceName }}.RegisterServiceServer(grpcServer, {{ camel .ServiceName }}Service)
 	// Run gRPC server
 	eg.Go(func() error {
 		addr := fmt.Sprintf(":%d", *grpcPort)
@@ -230,7 +236,7 @@ func main() {
 
 	{{if .Twirp}}
 	// Registering of twirp rpc services
-	{{ camel .ServiceName }}Handler := {{ package .ServiceName }}.NewServiceServer({{ camel .ServiceName }}, nil)
+	{{ camel .ServiceName }}Handler := {{ package .ServiceName }}.NewServiceServer({{ camel .ServiceName }}Service, nil)
 	router.Mount({{ camel .ServiceName }}Handler.PathPrefix(), {{ camel .ServiceName }}Handler)
 	{{end}}
 
