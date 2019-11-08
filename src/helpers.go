@@ -19,7 +19,7 @@ func prepareString(str string) string {
 func ToTitle(str string) string {
 	str = strings.Title(prepareString(str))
 	str = strings.ReplaceAll(str, " ", "")
-	return str
+	return goNamingConvention(str)
 }
 
 // PackageName ...
@@ -29,13 +29,13 @@ func PackageName(str string) string {
 
 // ToCamelCase ...
 func ToCamelCase(str string) string {
-	return LcFirst(ToTitle(str))
+	return goNamingConvention(LcFirst(ToTitle(str)))
 }
 
 // UcFirst ...
 func UcFirst(str string) string {
 	for i, v := range str {
-		return string(unicode.ToUpper(v)) + str[i+1:]
+		return goNamingConvention(string(unicode.ToUpper(v)) + str[i+1:])
 	}
 	return ""
 }
@@ -43,7 +43,7 @@ func UcFirst(str string) string {
 // LcFirst ...
 func LcFirst(str string) string {
 	for i, v := range str {
-		return string(unicode.ToLower(v)) + str[i+1:]
+		return goNamingConvention(string(unicode.ToLower(v)) + str[i+1:])
 	}
 	return ""
 }
@@ -51,5 +51,13 @@ func LcFirst(str string) string {
 // URLToVarName ...
 func URLToVarName(str string) string {
 	str = alphaStr.ReplaceAllString(str, " ")
-	return ToCamelCase(prepareString(str))
+	return goNamingConvention(ToCamelCase(prepareString(str)))
+}
+
+func goNamingConvention(str string) string {
+	str = strings.ReplaceAll(str, "Api", "API")
+	str = strings.ReplaceAll(str, "Rpc", "RPC")
+	str = strings.ReplaceAll(str, "Http", "HTTP")
+	str = strings.ReplaceAll(str, "Id", "ID")
+	return str
 }
