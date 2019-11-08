@@ -213,7 +213,7 @@ func main() {
 	// Set up a connection to the server.
 	conn, err := grpc.Dial("{{$value}}", grpc.WithInsecure())
 	if err != nil {
-		log.Fatalf("did not connect to {{$value}}: %v", err)
+		log.Fatalf("could not connect to {{$value}}: %v", err)
 	}
 	{{urlTovar $value}} := {{ package $value }}.NewServiceClient(conn)
 	{{end}}{{end}}
