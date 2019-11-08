@@ -11,14 +11,26 @@ help: ## Show this help
 proto: ## Compile protobuf for golang
 	@protoc -I /usr/local/include -I . \
 		-I$(GOPATH)/src \
-		-I ${GOPATH}/src/github.com/envoyproxy/protoc-gen-validate \
 		--go_out=plugins=grpc:. \
+		pb/**/*.proto
+
+.PHONY: tproto
+tproto: ## Compile protobuf for twirp
+	@protoc -I /usr/local/include -I . \
+		-I$(GOPATH)/src \
 		--twirp_out=. \
+		pb/**/*.proto
+
+.PHONY: vproto
+vproto: ## Compile protobuf validator
+	@protoc -I /usr/local/include -I . \
+		-I$(GOPATH)/src \
+		-I ${GOPATH}/src/github.com/envoyproxy/protoc-gen-validate \
 		--validate_out=lang=go:. \
 		pb/**/*.proto
 {{end}}
 .PHONY: build
-build: {{if .RPC}}proto{{end}} ## Build application{{if .RPC}} and compile protobuf for golang{{end}}
+build: {{if .RPC}}proto{{end}} {{if .Twirp}}tproto{{end}} ## Build application{{if .RPC}} and compile protobuf for golang{{end}}
 	@go clean
 	@CGO_ENABLED=0 \
 	GOOS=linux \

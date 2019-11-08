@@ -26,9 +26,44 @@ msgen -h
 * https://micro.mu/docs/new.html (a part of the `micro` infrastructure)
 * https://github.com/fiorix/protoc-gen-cobra (Cobra command line tool generator for gRPC clients)
 
+## Prerequisites
+
+To use the tool you should have installed [brotobuf](https://developers.google.com/protocol-buffers/docs/gotutorial) and [grpc-go](https://github.com/grpc/grpc-go)
+
+```
+go get -u github.com/golang/protobuf/{proto,protoc-gen-go}
+go get -u google.golang.org/grpc
+```
+Protobuf is also available in MacOS through Homebrew:
+```
+brew install protobuf
+```
+
+## Optional dependencies
+
+[Twirp](https://twitchtv.github.io/twirp/docs/install.html) - is a simple RPC framework built on protobuf
+```
+go get -u github.com/twitchtv/twirp/protoc-gen-twirp
+```
+
+[Protobuf validator](https://github.com/envoyproxy/protoc-gen-validate) by Envoyproxy*
+```
+# fetches this repo into $GOPATH
+go get -d github.com/envoyproxy/protoc-gen-validate
+
+# installs PGV into $GOPATH/bin
+cd $GOPATH/src/github.com/envoyproxy/protoc-gen-validate && make build
+```
+*uncomment lines in generated Makefile to use it
+```
+# -I ${GOPATH}/src/github.com/envoyproxy/protoc-gen-validate \
+# --validate_out=lang=go:. \
+```
+
 ## Usage
 
-Let's create simple HTTP-RPC microservice with one method and exposed port via kubernetes load balancer service
+Let's create simple HTTP-RPC microservice with one method and exposed port via kubernetes load balancer service.
+To move ahead through the usage example you should install [optional dependencies](#optional-dependencies) too.
 > Run `msgen --help` to get more details about available options
 ```
 msgen --twirp --rpc_methods=test_call --http_lb test-http-srv

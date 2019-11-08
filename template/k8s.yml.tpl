@@ -21,9 +21,9 @@ spec:
     type: RollingUpdate
   template:
     metadata:
-      {{if .Linkerd}}annotations:
+      annotations:
         config.linkerd.io/skip-outbound-ports: "4222,5432,6379"
-        linkerd.io/inject: enabled{{end}}
+        linkerd.io/inject: {{if .Linkerd}}enabled{{else}}disabled{{end}}
       creationTimestamp: null
       labels:
         app: {{ .ServiceName }}
@@ -33,26 +33,12 @@ spec:
         - name: {{ .ServiceName }}
           image: {{ .ServiceName }}:latest
           imagePullPolicy: IfNotPresent
-          args: [
-            "-debug=true",
-            "-app_name='The Awesome App'",
-            {{if .HTTP}}"-http_port={{.HTTPPort}}",{{end}}
-            {{if .Grpc}}"-grpc_port={{.GrpcPort}}",{{end}}
-            {{if .DB}}"-db_host={{.DB.Host}}",
-            "-db_port={{.DB.Port}}",
-            "-db_name={{.DB.Name}}",
-            "-db_user={{.DB.User}}",
-            "-db_password={{.DB.Password}}",
-            "-db_pool_size=10",{{end}}
-            {{if .RedisPool}}"-redis_host={{.RedisHost}}",{{end}}
-            {{if .Nats}}"-nats_host=nats://nats-cluster:4222",
-            "-nats_queue_subject={{ .ServiceName }}"{{end}}
-          ]
+          args: ["-debug=true", "-app_name='The Awesome App'", {{if .HTTP}}"-http_port={{.HTTPPort}}",{{end}} {{if .Grpc}}"-grpc_port={{.GrpcPort}}",{{end}} {{if .DB}}"-db_host={{.DB.Host}}", "-db_port={{.DB.Port}}", "-db_name={{.DB.Name}}", "-db_user={{.DB.User}}", "-db_password={{.DB.Password}}", "-db_pool_size=10",{{end}} {{if .RedisPool}}"-redis_host={{.RedisHost}}",{{end}} {{if .Nats}}"-nats_host=nats://nats-cluster:4222", "-nats_queue_subject={{ .ServiceName }}"{{end}}]
           ports:
-            {{if .Grpc}}- containerPort: {{.GrpcPort}}
-              name: grpc{{end}}
-            {{if .HTTP}}- containerPort: {{.HTTPPort}}
-              name: http{{end}}
+            {{if not .Grpc}}# {{end}}- containerPort: {{.GrpcPort}}
+            {{if not .Grpc}}# {{end}}  name: grpc
+            {{if not .HTTP}}# {{end}}- containerPort: {{.HTTPPort}}
+            {{if not .HTTP}}# {{end}}  name: http
 status: {}
 {{if .GrpcSrv}}
 ---
