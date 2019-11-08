@@ -3,12 +3,12 @@ package main
 import (
 	"context"
 	{{if .TLS}}"crypto/tls"
-	"crypto/x509"{{end}}
+	"crypto/x509"
+	"io/ioutil"{{end}}
 	"flag"
 	"fmt"
-	"io/ioutil"
 	{{if .Grpc}}"net"{{end}}
-	"net/http"
+	{{if .HTTP}}"net/http"{{end}}
 	"os"
 	"os/signal"
 	"syscall"
