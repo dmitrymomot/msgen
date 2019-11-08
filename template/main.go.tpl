@@ -143,6 +143,15 @@ func main() {
 	enqueuer := work.NewEnqueuer("{default}", redisPool)
 	{{end}}
 
+	{{if .GrpcClients}}{{range $value := .GrpcClients}}
+	// Set up a connection to the server.
+	conn, err := grpc.Dial("{{$value}}", grpc.WithInsecure())
+	if err != nil {
+		log.Fatalf("could not connect to {{$value}}: %v", err)
+	}
+	{{urlTovar $value}} := {{ package $value }}.NewServiceClient(conn)
+	{{end}}{{end}}
+
 	{{if .Nats}}
 	// Set up NATS connection
 	natsOpts := setupNatsConnOptions(log, []nats.Option{nats.Name(serviceName)})
@@ -208,15 +217,6 @@ func main() {
 		return nil
 	})
 	{{end}}
-
-	{{if .GrpcClients}}{{range $value := .GrpcClients}}
-	// Set up a connection to the server.
-	conn, err := grpc.Dial("{{$value}}", grpc.WithInsecure())
-	if err != nil {
-		log.Fatalf("could not connect to {{$value}}: %v", err)
-	}
-	{{urlTovar $value}} := {{ package $value }}.NewServiceClient(conn)
-	{{end}}{{end}}
 
 	{{if .HTTP}}
 	router := chi.NewRouter()
