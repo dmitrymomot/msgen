@@ -211,11 +211,11 @@ func main() {
 
 	{{if .GrpcClients}}{{range $value := .GrpcClients}}
 	// Set up a connection to the server.
-	conn, err := grpc.Dial({{$value}}, grpc.WithInsecure())
+	conn, err := grpc.Dial("{{$value}}", grpc.WithInsecure())
 	if err != nil {
-		log.Fatalf("did not connect to %s: %v", {{$value}}, err)
+		log.Fatalf("did not connect to {{$value}}: %v", err)
 	}
-	{{url2var $value}} := {{ package $value }}.NewServiceClient(conn)
+	{{urlTovar $value}} := {{ package $value }}.NewServiceClient(conn)
 	{{end}}{{end}}
 
 	{{if .HTTP}}

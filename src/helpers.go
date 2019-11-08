@@ -1,16 +1,17 @@
 package src
 
 import (
-	"net/url"
+	"regexp"
 	"strings"
 	"unicode"
 )
 
+var (
+	alphaStr = regexp.MustCompile("[^a-zA-Z]+")
+)
+
 func prepareString(str string) string {
-	str = strings.ReplaceAll(str, "_", " ")
-	str = strings.ReplaceAll(str, "-", " ")
-	str = strings.ReplaceAll(str, "/", " ")
-	str = strings.ReplaceAll(str, ".", " ")
+	str = alphaStr.ReplaceAllString(str, " ")
 	return str
 }
 
@@ -49,9 +50,6 @@ func LcFirst(str string) string {
 
 // URLToVarName ...
 func URLToVarName(str string) string {
-	u, err := url.Parse(str)
-	if err != nil {
-		panic(err)
-	}
-	return ToCamelCase(prepareString(u.Hostname()))
+	str = alphaStr.ReplaceAllString(str, " ")
+	return ToCamelCase(prepareString(str))
 }
