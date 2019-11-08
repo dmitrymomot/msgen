@@ -63,9 +63,7 @@ Check it in terminal
 curl --request POST \
   --url http://localhost:8888/twirp/testhttpsrv.Service/TestCall \
   --header 'content-type: application/json' \
-  --data '{
-	"str": "test string sample"
-}'
+  --data '{"str": "test string sample"}'
 ```
 
 ## License
