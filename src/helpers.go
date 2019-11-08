@@ -59,5 +59,7 @@ func goNamingConvention(str string) string {
 	str = strings.ReplaceAll(str, "Rpc", "RPC")
 	str = strings.ReplaceAll(str, "Http", "HTTP")
 	str = strings.ReplaceAll(str, "Id", "ID")
+	str = strings.ReplaceAll(str, "Url", "URL")
+	str = strings.ReplaceAll(str, "Uri", "URI")
 	return str
 }
