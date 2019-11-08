@@ -7,7 +7,6 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
-	stdlog "log"
 	"net"
 	"net/http"
 	"os"
@@ -23,13 +22,13 @@ import (
 	"github.com/go-chi/chi/middleware"{{end}}
 	{{if .DB}}"github.com/go-pg/pg/v9"
 	"github.com/go-pg/pg/v9/orm"{{end}}
-	{{if .RedisPool}}"github.com/gocraft/work"{{end}}
-	{{if .Jobs}}"github.com/gomodule/redigo/redis"{{end}}
+	{{if .Jobs}}"github.com/gocraft/work"{{end}}
+	{{if .RedisPool}}"github.com/gomodule/redigo/redis"{{end}}
 	"github.com/google/uuid"
 	{{if .Nats}}"github.com/nats-io/nats.go"{{end}}
 	"github.com/pkg/errors"
-	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
+	"go.uber.org/zap"
 	{{if .Grpc}}"google.golang.org/grpc"{{end}}
 )
 
@@ -59,7 +58,6 @@ var (
 
 	{{if .Grpc}}grpcServer *grpc.Server{{end}}
 	{{if .HTTP}}httpServer *http.Server{{end}}
-	log *zap.SugaredLogger
 	{{if .Nats}}queueSubscr *nats.Subscription{{end}}
 )
 
@@ -67,20 +65,8 @@ func main() {
 	flag.Parse()
 
 	// Set up logger
-	var zlogger *zap.Logger
-	var err error
-	if *debug {
-		zlogger, err = zap.NewDevelopment()
-	} else {
-		zlogger, err = zap.NewProduction()
-	}
-	if err != nil {
-		stdlog.Fatal("can't init logger", err)
-	}
-	defer zlogger.Sync()
-	log = zlogger.Sugar().With(zap.String("service_name", serviceName), zap.String("build", buildTag))
-	log.Info("starting app")
-	log.Debug("debug mode enabled")
+	log := defaultLogger(*debug)
+	defer log.Sync()
 
 	// Listen interrupt signal from OS
 	interrupt := make(chan os.Signal, 1)
@@ -183,10 +169,10 @@ func main() {
 		uuid := uuid.New().String()
 		for {
 			select {
-			case <-ticker.C:
+			case {{ asis "<-" }}ticker.C:
 				msg := fmt.Sprintf("publisher %s: Current time is %s", uuid, time.Now().String())
 				nc.Publish(*natsQueueSubject, []byte(msg))
-			case <-ctx.Done():
+			case {{ asis "<-" }}ctx.Done():
 				return nil
 			}
 		}
@@ -195,7 +181,7 @@ func main() {
 
 	{{if .RPC}}
 	// Init RPC service
-	{{ camel .ServiceName }} := service.New(log, db, enqueuer)
+	{{ camel .ServiceName }} := service.New(log{{if .DB}}, db{{end}}{{if .Jobs}}, enqueuer{{end}})
 	{{end}}
 
 	{{if .Grpc}}
@@ -218,25 +204,22 @@ func main() {
 	})
 	{{end}}
 
+	{{if .GrpcClients}}{{range $value := .GrpcClients}}
 	// Set up a connection to the server.
-	// c, err := e.NewDefaultClient("examplesrv:9200")
-	// if err != nil {
-	// 	log.Fatalf("did not connect: %v", err)
-	// }
-	c := client.Must(client.NewDefaultClient("examplesrv:9200"))
-	defer c.Close()
+	conn, err := grpc.Dial({{$value}}, grpc.WithInsecure())
+	if err != nil {
+		log.Fatalf("did not connect to %s: %v", {{$value}}, err)
+	}
+	{{url2var $value}} := {{ package $value }}.NewServiceClient(conn)
+	{{end}}{{end}}
 
 	{{if .HTTP}}
 	router := chi.NewRouter()
 	router.Use(middleware.Recoverer)
-	{{end}}
-	{{if .HTTPHealth != ""}}
-	router.Get("/{{.HTTPHealth}}", func(w http.ResponseWriter, r *http.Request) {
+	router.Get("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNoContent)
 	})
-	{{end}}
 
-	{{if .HTTP}}
 	httpServer = &http.Server{
 		Addr:         fmt.Sprintf(":%d", *httpPort),
 		Handler:      router,
@@ -264,9 +247,9 @@ func main() {
 
 	// Wait for interrupt signal or context cancellation
 	select {
-	case <-interrupt:
+	case {{ asis "<-" }}interrupt:
 		break
-	case <-ctx.Done():
+	case {{ asis "<-" }}ctx.Done():
 		break
 	}
 
@@ -308,50 +291,3 @@ func loadTLSRootCert(path string) (*tls.Config, error) {
 }
 {{end}}
 
-{{if .RedisPool}}
-func newRedisPool(connStr string, tlsCnf *tls.Config) *redis.Pool {
-	return &redis.Pool{
-		MaxActive: 10,
-		MaxIdle:   10,
-		Wait:      true,
-		Dial:      setupRedisConnection(connStr, tlsCnf),
-		TestOnBorrow: func(c redis.Conn, t time.Time) error {
-			if time.Since(t) < time.Minute {
-				return nil
-			}
-			_, err := c.Do("PING")
-			return err
-		},
-	}
-}
-
-func setupRedisConnection(connStr string, tlsCnf *tls.Config) func() (redis.Conn, error) {
-	return func() (redis.Conn, error) {
-		conn, err := redis.DialURL(connStr, redis.DialTLSConfig(tlsCnf))
-		if err != nil {
-			return nil, err
-		}
-		return conn, nil
-	}
-}
-{{end}}
-
-{{if .Nats}}
-func setupNatsConnOptions(log *zap.SugaredLogger, opts []nats.Option) []nats.Option {
-	totalWait := 10 * time.Minute
-	reconnectDelay := time.Second
-
-	opts = append(opts, nats.ReconnectWait(reconnectDelay))
-	opts = append(opts, nats.MaxReconnects(int(totalWait/reconnectDelay)))
-	opts = append(opts, nats.DisconnectErrHandler(func(nc *nats.Conn, err error) {
-		log.Infof("Disconnected due to: %s, will attempt reconnects for %.0fm", err, totalWait.Minutes())
-	}))
-	opts = append(opts, nats.ReconnectHandler(func(nc *nats.Conn) {
-		log.Infof("Reconnected [%s]", nc.ConnectedUrl())
-	}))
-	opts = append(opts, nats.ClosedHandler(func(nc *nats.Conn) {
-		log.Fatalf("Exiting: %v", nc.LastError())
-	}))
-	return opts
-}
-{{end}}

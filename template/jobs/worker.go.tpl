@@ -29,8 +29,8 @@ func (c *Worker) RegisterJobs() error {
 	}
 
 	// Set up worker pool handlers
-	{{ if .Jobs }}{{ range $value := .Jobs }}
-	c.pool.JobWithOptions(Queue{{ title $value}}, work.JobOptions{Priority: 1000, MaxFails: 5}, c.{{ title $value}}){{ end }}{{ end }}
+	{{ if .Jobs }}{{ range $value := .Jobs }}c.pool.JobWithOptions(Queue{{ title $value}}, work.JobOptions{Priority: 1000, MaxFails: 5}, c.{{ title $value}})
+	{{ end }}{{ end }}
 
 	return nil
 }

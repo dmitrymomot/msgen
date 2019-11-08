@@ -6,7 +6,7 @@ LATEST_COMMIT := $$(git rev-parse HEAD)
 .PHONY: help
 help: ## Show this help
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
-
+{{if .RPC}}
 .PHONY: proto
 proto: ## Compile protobuf for golang
 	protoc -I /usr/local/include -I . \
@@ -16,9 +16,9 @@ proto: ## Compile protobuf for golang
 		--twirp_out=. \
 		--validate_out=lang=go:. \
 		pb/**/*.proto
-
+{{end}}
 .PHONY: build
-build: proto ## Build application and compile protobuf for golang
+build: {{if .RPC}}proto{{end}} ## Build application{{if .RPC}} and compile protobuf for golang{{end}}
 	@go clean
 	CGO_ENABLED=0 \
 	GOOS=linux \
@@ -31,7 +31,7 @@ build: proto ## Build application and compile protobuf for golang
 .PHONY: docker
 docker: ## Build docker image
 	docker build . -t {{ .ServiceName }}:latest
-
+{{if .K8s}}
 .PHONY: deploy
 deploy: ## Deploy pods to kubernetes
 	kubectl apply -f k8s.yml
@@ -50,3 +50,4 @@ info: ## Get cluster info
 .PHONY: logs
 log: ## Show logs
 	@kubectl logs -lapp={{ .ServiceName }} --container={{ .ServiceName }}
+{{end}}

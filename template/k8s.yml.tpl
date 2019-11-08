@@ -36,25 +36,25 @@ spec:
           args: [
             "-debug=true",
             "-app_name='The Awesome App'",
-            "-http_port=8888",
-            "-grpc_port={{.GrpcPort}}",
-            "-db_host=postgres",
-            "-db_port=5432",
-            "-db_name=pgdb",
-            "-db_user=pguser",
-            "-db_password=pgpass",
-            "-db_pool_size=22",
-            "-redis_host=redis://redis:6379",
-            "-nats_host=nats://nats-cluster:4222",
-            "-nats_queue_subject={{ .ServiceName }}"
+            {{if .HTTP}}"-http_port={{.HTTPPort}}",{{end}}
+            {{if .Grpc}}"-grpc_port={{.GrpcPort}}",{{end}}
+            {{if .DB}}"-db_host={{.DB.Host}}",
+            "-db_port={{.DB.Port}}",
+            "-db_name={{.DB.Name}}",
+            "-db_user={{.DB.User}}",
+            "-db_password={{.DB.Password}}",
+            "-db_pool_size=10",{{end}}
+            {{if .RedisPool}}"-redis_host={{.RedisHost}}",{{end}}
+            {{if .Nats}}"-nats_host=nats://nats-cluster:4222",
+            "-nats_queue_subject={{ .ServiceName }}"{{end}}
           ]
           ports:
             {{if .Grpc}}- containerPort: {{.GrpcPort}}
               name: grpc{{end}}
-            {{.HTTP}}- containerPort: {{.HTTPPort}}
+            {{if .HTTP}}- containerPort: {{.HTTPPort}}
               name: http{{end}}
 status: {}
-{{if .GrpcSvc}}
+{{if .GrpcSrv}}
 ---
 apiVersion: v1
 kind: Service
@@ -84,7 +84,7 @@ spec:
       port: {{.GrpcPort}}
       targetPort: {{.GrpcPort}}
 {{end}}
-{{if .HTTPSvc}}
+{{if .HTTPSrv}}
 ---
 apiVersion: v1
 kind: Service

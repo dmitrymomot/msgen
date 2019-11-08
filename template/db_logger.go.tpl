@@ -8,10 +8,10 @@ import (
 )
 
 type dbLogger struct {
-	log *zap.SugaredLogger
+	log *Logger
 }
 
-func newDBLogger(log *zap.SugaredLogger) dbLogger {
+func newDBLogger(log *Logger) dbLogger {
 	return dbLogger{log: log}
 }
 
