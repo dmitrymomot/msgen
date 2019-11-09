@@ -142,11 +142,11 @@ func main() {
 
 	{{if .GrpcClients}}{{range $value := .GrpcClients}}
 	// Set up a connection to the server.
-	conn, err := grpc.Dial("{{$value}}", grpc.WithInsecure())
+	{{urlTovar $value}}Conn, err := grpc.Dial("{{$value}}", grpc.WithInsecure())
 	if err != nil {
 		logger.Fatal().Err(err).Str("host", "{{$value}}").Msg("grpc client connection error")
 	}
-	{{urlTovar $value}} := {{ package $value }}.NewServiceClient(conn)
+	{{urlTovar $value}}Client := {{ package $value }}.NewServiceClient({{urlTovar $value}}Conn)
 	{{end}}{{end}}
 
 	{{if .Nats}}
