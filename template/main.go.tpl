@@ -11,13 +11,13 @@ import (
 	{{if .HTTP}}"net/http"{{end}}
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
 	{{if .ClientHelper}}"{{ .ServicePath }}/client"{{end}}
 	{{if .Jobs}}"{{ .ServicePath }}/jobs"{{end}}
 	"{{ .ServicePath }}/pb/{{ package .ServiceName }}"
-	"{{ .ServicePath }}/logger"
 	"{{ .ServicePath }}/service"
 	{{if .HTTP}}"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"{{end}}
@@ -26,10 +26,11 @@ import (
 	{{if .Jobs}}"github.com/gocraft/work"{{end}}
 	{{if .RedisPool}}"github.com/gomodule/redigo/redis"{{end}}
 	{{if .DB}}"github.com/google/uuid"{{end}}
-	{{if .Nats}}"github.com/nats-io/nats.go"
-	"go.uber.org/zap"{{end}}
+	{{if .Nats}}"github.com/nats-io/nats.go"{{end}}
 	"github.com/pkg/errors"
 	"golang.org/x/sync/errgroup"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 	{{if .Grpc}}"google.golang.org/grpc"{{end}}
 )
 
@@ -43,6 +44,7 @@ var (
 	{{if .HTTP}}httpPort    = flag.Int("http_port", 8888, "http port"){{end}}
 	{{if .Grpc}}grpcPort    = flag.Int("grpc_port", 9200, "grpc port"){{end}}
 	debug       = flag.Bool("debug", false, "enable debug mode")
+	console     = flag.Bool("console_log", false, "change logs format from JSON to console output")
 	{{if .TLS}}tlsRootCert = flag.String("tls_root_cert", "", "path to TLS root certificate"){{end}}
 	{{if .DB}}
 	dbHost     = flag.String("db_host", "postgres", "postgresql database name")
@@ -66,12 +68,7 @@ func main() {
 	flag.Parse()
 
 	// Set up logger
-	log := logger.DefaultLogger(logger.Options{
-		Debug:       *debug,
-		ServiceName: serviceName,
-		BuildTag:    buildTag,
-	})
-	defer log.Sync()
+	logger := initLogger(*console, *debug, serviceName, buildTag)
 
 	// Listen interrupt signal from OS
 	interrupt := make(chan os.Signal, 1)
@@ -91,7 +88,7 @@ func main() {
 	if *tlsRootCert != "" {
 		tlsConfig, err = loadTLSRootCert(*tlsRootCert)
 		if err != nil {
-			log.Fatal(err)
+			logger.Fatal().Err(err).Msg("tls root certificate loading")
 		}
 	}
 	{{end}}
@@ -111,14 +108,14 @@ func main() {
 
 	if *debug {
 		// Log each database query
-		db.AddQueryHook(logger.NewDBLogger(log))
+		db.AddQueryHook(newDBLogger(logger))
 	}
 
 	if err := db.CreateTable(&struct {
 		tableName string    `pg:"test_tbl"`
 		ID        uuid.UUID `pg:",pk"`
 	}{}, &orm.CreateTableOptions{IfNotExists: true}); err != nil {
-		log.Fatal(err)
+		logger.Fatal().Err(err).Msg("create table")
 	}
 	{{end}}
 
@@ -133,7 +130,7 @@ func main() {
 	// Init worker pool context
 	worker := jobs.NewWorker(pool)
 	if err := worker.RegisterJobs(); err != nil {
-		log.Fatal(err)
+		logger.Fatal().Err(err).Msg("worker jobs registration")
 	}
 	// Start processing jobs
 	pool.Start()
@@ -147,17 +144,17 @@ func main() {
 	// Set up a connection to the server.
 	conn, err := grpc.Dial("{{$value}}", grpc.WithInsecure())
 	if err != nil {
-		log.Fatalf("could not connect to {{$value}}: %v", err)
+		logger.Fatal().Err(err).Str("host", "{{$value}}").Msg("grpc client connection error")
 	}
 	{{urlTovar $value}} := {{ package $value }}.NewServiceClient(conn)
 	{{end}}{{end}}
 
 	{{if .Nats}}
 	// Set up NATS connection
-	natsOpts := setupNatsConnOptions(log, []nats.Option{nats.Name(serviceName)})
+	natsOpts := setupNatsConnOptions(logger, []nats.Option{nats.Name(serviceName)})
 	nc, err := nats.Connect(*natsHost, natsOpts...)
 	if err != nil {
-		log.Fatalw(err.Error(), zap.String("host", *natsHost))
+		logger.Fatal().Err(err).Str("host", *natsHost).Msg("nats client connection error")
 	}
 	defer nc.Close()
 	{{end}}
@@ -165,13 +162,14 @@ func main() {
 	{{if .Sub}}
 	// Subscribe to {{.ServiceName}}.* channel in {{.ServiceName}} queue
 	queueSubscr, err := nc.QueueSubscribe(*natsQueueSubject, serviceName, func(msg *nats.Msg) {
-		log.Infow("received message",
-			zap.String("subject", msg.Subject),
-			zap.String("reply", msg.Reply),
-			zap.String("data", string(msg.Data)))
+		logger.Info().
+			Str("subject", msg.Subject).
+			Str("reply", msg.Reply).
+			Str("data", string(msg.Data))).
+			Msg("received message")
 	})
 	if err != nil {
-		log.Fatal(err)
+		logger.Fatal().Err(err).Msg("nats queue subscription error")
 	}
 	defer queueSubscr.Unsubscribe()
 	{{end}}
@@ -184,7 +182,7 @@ func main() {
 			select {
 			case {{ asis "<-" }}ticker.C:
 				msg := fmt.Sprintf("publisher {{ .ServiceName }}: Current time is %s", time.Now().String())
-				log.Debug(msg)
+				logger.Debug().Msg(msg)
 				nc.Publish(*natsQueueSubject, []byte(msg))
 			case {{ asis "<-" }}ctx.Done():
 				return nil
@@ -195,7 +193,7 @@ func main() {
 
 	{{if .RPC}}
 	// Init RPC service
-	{{ camel .ServiceName }}Service := service.New(log{{if .DB}}, db{{end}}{{if .Jobs}}, enqueuer{{end}})
+	{{ camel .ServiceName }}Service := service.New(logger{{if .DB}}, db{{end}}{{if .Jobs}}, enqueuer{{end}})
 	{{end}}
 
 	{{if .Grpc}}
@@ -210,7 +208,7 @@ func main() {
 		if err != nil {
 			return errors.Wrap(err, "grpc failed to listen")
 		}
-		log.Infof("gRPC server serving at %s", addr)
+		logger.Info().Str("listen", addr).Msg("gRPC server started")
 		if err := grpcServer.Serve(grpcLis); err != nil {
 			return errors.Wrap(err, "grpc server")
 		}
@@ -242,7 +240,7 @@ func main() {
 	{{if .HTTP}}
 	// Run http server
 	eg.Go(func() error {
-		log.Infof("HTTP server serving at %s", httpServer.Addr)
+		logger.Info().Str("listen", httpServer.Addr).Msg("HTTP server started")
 		if err := httpServer.ListenAndServe(); err != http.ErrServerClosed {
 			return errors.Wrap(err, "http server")
 		}
@@ -258,7 +256,7 @@ func main() {
 		break
 	}
 
-	log.Info("received shutdown signal")
+	logger.Info().Msg("received shutdown signal")
 
 	{{if .Grpc}}
 	if grpcServer != nil {
@@ -275,10 +273,10 @@ func main() {
 	{{end}}
 
 	if err := eg.Wait(); err != nil {
-		log.Fatalf("failed to wait goroutine group: %v.", err.Error())
+		logger.Fatal().Err(err).Msg("failed to wait goroutine group")
 	}
 
-	log.Infof("shutdown at %s", time.Now().String())
+	logger.Info().Msg("service stopped")
 }
 
 {{if .TLS}}
@@ -295,4 +293,24 @@ func loadTLSRootCert(path string) (*tls.Config, error) {
 	}, nil
 }
 {{end}}
+func initLogger(console, debug bool, serviceName, buildTag string) (logger zerolog.Logger) {
+	zerolog.SetGlobalLevel(zerolog.InfoLevel)
+	if debug {
+		zerolog.SetGlobalLevel(zerolog.DebugLevel)
+	}
 
+	if console {
+		output := zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: time.RFC3339}
+		output.FormatLevel = func(i interface{}) string {
+			return strings.ToUpper(fmt.Sprintf("| %-6s|", i))
+		}
+		logger = zerolog.New(output).With().Timestamp().Logger()
+	} else {
+		logger = log.Logger
+	}
+
+	logger = logger.With().Str("service", serviceName).Str("build", buildTag).Logger()
+	logger.Debug().Msg("debug mode enabled")
+
+	return logger
+}

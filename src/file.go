@@ -36,7 +36,6 @@ func getDefaultFilesList(serviceName string) []file {
 		file{Template: "gitignore.tpl", Path: ".gitignore"},
 		newFile("Dockerfile.tpl", serviceName),
 		newFile("go.mod.tpl", serviceName),
-		newFile("logger/logger.go.tpl", serviceName),
 		newFile("main.go.tpl", serviceName),
 		newFile("Makefile.tpl", serviceName),
 		newFile("README.md.tpl", serviceName),
@@ -81,7 +80,7 @@ func getFilesList(opt options) []file {
 	}
 
 	if opt.DB != nil {
-		files = append(files, newFile("logger/db_logger.go.tpl", opt.ServiceName))
+		files = append(files, newFile("db_logger.go.tpl", opt.ServiceName))
 	}
 
 	if opt.K8s {

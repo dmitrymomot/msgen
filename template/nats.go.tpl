@@ -2,24 +2,24 @@ package main
 
 import (
 	"time"
-	"{{ .ServicePath }}/logger"
+	"github.com/rs/zerolog"
 	"github.com/nats-io/nats.go"
 )
 
-func setupNatsConnOptions(log *logger.Logger, opts []nats.Option) []nats.Option {
+func setupNatsConnOptions(log zerolog.Logger, opts []nats.Option) []nats.Option {
 	totalWait := 10 * time.Minute
 	reconnectDelay := time.Second
 
 	opts = append(opts, nats.ReconnectWait(reconnectDelay))
 	opts = append(opts, nats.MaxReconnects(int(totalWait/reconnectDelay)))
 	opts = append(opts, nats.DisconnectErrHandler(func(nc *nats.Conn, err error) {
-		log.Infof("Disconnected due to: %s, will attempt reconnects for %.0fm", err, totalWait.Minutes())
+		log.Info().Err(err).Msgf("nats client disconnected, will attempt reconnects for %.0fm", totalWait.Minutes())
 	}))
 	opts = append(opts, nats.ReconnectHandler(func(nc *nats.Conn) {
-		log.Infof("Reconnected [%s]", nc.ConnectedUrl())
+		log.Info().Msgf("Reconnected [%s]", nc.ConnectedUrl())
 	}))
 	opts = append(opts, nats.ClosedHandler(func(nc *nats.Conn) {
-		log.Fatalf("Exiting: %v", nc.LastError())
+		log.Fatal().Err(err).Msgf("nats connection closed")
 	}))
 	return opts
 }
