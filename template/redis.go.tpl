@@ -1,6 +1,8 @@
 package main
 
 import (
+	"crypto/tls"
+	"time"
 	"github.com/gomodule/redigo/redis"
 )
 
@@ -29,4 +31,3 @@ func setupRedisConnection(connStr string, tlsCnf *tls.Config) func() (redis.Conn
 		return conn, nil
 	}
 }
-{{end}}

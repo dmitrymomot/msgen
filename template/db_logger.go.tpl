@@ -21,7 +21,7 @@ func (d dbLogger) BeforeQuery(c ctx.Context, q *pg.QueryEvent) (ctx.Context, err
 func (d dbLogger) AfterQuery(c ctx.Context, q *pg.QueryEvent) error {
 	qs, err := q.FormattedQuery()
 	if err != nil {
-		d.log.Error().Err(err).Msg("query string error)
+		d.log.Error().Err(err).Msg("query string error")
 		return err
 	}
 	d.log.Debug().Str("query", qs).Msg("database query debug")

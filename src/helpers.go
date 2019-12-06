@@ -24,7 +24,17 @@ func ToTitle(str string) string {
 
 // PackageName ...
 func PackageName(str string) string {
-	return strings.ReplaceAll(prepareString(str), " ", "")
+	return strings.ReplaceAll(strings.ToLower(prepareString(str)), " ", "")
+}
+
+// GRPCPackageName ...
+func GRPCPackageName(str string) string {
+	return strings.ReplaceAll(strings.ToLower(prepareString(str)), " ", ".")
+}
+
+// ToURL ...
+func ToURL(str string) string {
+	return strings.ReplaceAll(strings.ToLower(prepareString(str)), " ", "-")
 }
 
 // ToCamelCase ...

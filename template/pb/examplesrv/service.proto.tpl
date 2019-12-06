@@ -1,16 +1,22 @@
 syntax = "proto3";
 
-package {{ package .ServiceName }};
+package {{ grpcpackage .ServiceName }};
+option go_package="{{ package .ServiceName }}";
 
 // available plugins:
 // import "google/protobuf/wrappers.proto";
-// import "google/api/annotations.proto";
 // import "validate/validate.proto";
 // import "google/protobuf/any.proto";
+{{if not .GrpcGateway}}// {{end}}import "google/api/annotations.proto";
 
 service Service {
 	{{if .RPCMethods}}{{range $method := .RPCMethods}}
-	rpc {{title $method}} ({{title $method}}Req) returns ({{title $method}}Resp) {}{{end}}{{end}}
+	rpc {{title $method}} ({{title $method}}Req) returns ({{title $method}}Resp) { {{if $.GrpcGateway}}
+		option (google.api.http) = {
+			post: "/{{if not (eq $.Version "")}}{{$.Version}}/{{end}}{{ package $.ServiceName }}/{{url $method}}"
+			body: "*"
+		};
+	{{end}}}{{end}}{{end}}
 }
 
 {{if .RPCMethods}}{{range $method := .RPCMethods}}

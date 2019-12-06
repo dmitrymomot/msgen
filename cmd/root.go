@@ -1,5 +1,5 @@
 /*
-Copyright © 2019 Dmytro Momot
+Copyright © 2019 Dmytro Momot <mail@dmomot.com>
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -31,6 +31,7 @@ var cfgFile string
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:     "msgen",
+	Aliases: []string{"new"},
 	Short:   "Generate a new microservice from template",
 	Example: "msgen --grpc --grpc_port=9876 --pub --path=srv/users github.com/your-username/users-srv",
 	Run:     src.Generate,
@@ -57,10 +58,11 @@ func Execute() {
 func init() {
 	cobra.OnInitialize(initConfig)
 
-	rootCmd.Flags().StringP("namespace", "n", "default", "service namespace")
+	rootCmd.PersistentFlags().StringP("namespace", "n", "default", "service namespace")
 	rootCmd.Flags().String("path", "", "create in directory")
+	rootCmd.Flags().String("version", "v1", "API version")
 
-	rootCmd.Flags().Bool("linkerd", false, "enable linkerd support")
+	rootCmd.PersistentFlags().Bool("linkerd", false, "enable linkerd support")
 
 	rootCmd.Flags().Bool("grpc", false, "set up gRPC server")
 	rootCmd.Flags().Bool("grpc_lb", false, "gRPC load balancer with external port")
@@ -68,15 +70,16 @@ func init() {
 	rootCmd.Flags().Int("grpc_port", 9200, "grpc port")
 	rootCmd.Flags().StringSlice("grpc_clients", nil, "add grpc clients connections (e.g.: --grpc_clients=users-srv:9200,order:9200)")
 	rootCmd.Flags().Bool("grpc_client_helper", false, "create gRPC client helper")
+	rootCmd.Flags().Bool("grpc_gateway", false, "add gRPC gateway supporting")
 
 	rootCmd.Flags().StringSlice("rpc_methods", nil, "generate rpc methods (e.g.: --rpc_methods=list_users,get_user_by_id)")
 
 	rootCmd.Flags().Bool("twirp", false, "set up twirp server (exposed via http_port)")
 
 	rootCmd.Flags().Bool("http", false, "set up http server")
-	rootCmd.Flags().Int("http_port", 8888, "http port")
-	rootCmd.Flags().Bool("http_lb", false, "HTTP k8s load balancer with external port")
-	rootCmd.Flags().Bool("http_srv", false, "HTTP k8s service to use only in cluster")
+	rootCmd.PersistentFlags().Int("http_port", 8888, "http port")
+	rootCmd.PersistentFlags().Bool("http_lb", false, "HTTP k8s load balancer with external port")
+	rootCmd.PersistentFlags().Bool("http_srv", false, "HTTP k8s service to use only in cluster")
 
 	rootCmd.Flags().Bool("pub", false, "set up NATS publisher")
 	rootCmd.Flags().Bool("sub", false, "set up NATS subscriber")

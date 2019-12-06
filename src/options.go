@@ -12,6 +12,7 @@ type (
 		ServiceName string
 		ServicePath string
 		Namespace   string
+		Version     string
 		Path        string
 		AbsPath     string
 
@@ -22,6 +23,7 @@ type (
 		GrpcPort    int
 		GrpcClients []string
 		GrpcSrv     bool
+		GrpcGateway bool
 
 		Twirp bool
 
@@ -67,6 +69,7 @@ func parseOptions(cmd *cobra.Command, args []string) options {
 	opt.ServicePath = cmd.Flags().Arg(0)
 	opt.ServiceName = filepath.Base(opt.ServicePath)
 	opt.Namespace, _ = cmd.Flags().GetString("namespace")
+	opt.Version, _ = cmd.Flags().GetString("version")
 
 	opt.Path, _ = cmd.Flags().GetString("path")
 	opt.Path = strings.Trim(opt.Path, "/")
@@ -81,6 +84,7 @@ func parseOptions(cmd *cobra.Command, args []string) options {
 	opt.GrpcLB, _ = cmd.Flags().GetBool("grpc_lb")
 	opt.GrpcPort, _ = cmd.Flags().GetInt("grpc_port")
 	opt.GrpcSrv, _ = cmd.Flags().GetBool("grpc_srv")
+	opt.GrpcGateway, _ = cmd.Flags().GetBool("grpc_gateway")
 	opt.GrpcClients, _ = cmd.Flags().GetStringSlice("grpc_clients")
 
 	if opt.Grpc && !opt.GrpcLB && !opt.GrpcSrv {

@@ -21,10 +21,12 @@ func render(sfs http.FileSystem, f file, opt options) error {
 	}
 
 	t, err := template.New("f").Funcs(template.FuncMap{
-		"title":    ToTitle,
-		"camel":    ToCamelCase,
-		"package":  PackageName,
-		"urlTovar": URLToVarName,
+		"title":       ToTitle,
+		"camel":       ToCamelCase,
+		"package":     PackageName,
+		"grpcpackage": GRPCPackageName,
+		"url":         ToURL,
+		"urlTovar":    URLToVarName,
 		"asis": func(s string) template.HTML {
 			return template.HTML(s)
 		},

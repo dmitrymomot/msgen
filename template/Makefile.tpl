@@ -9,7 +9,7 @@ help: ## Show this help
 {{if .RPC}}
 .PHONY: proto
 proto: ## Compile protobuf for golang
-	@protoc -I /usr/local/include -I . \
+	@protoc -I /usr/local/include {{if .GrpcGateway}}-I$(GOPATH)/src/github.com/grpc-ecosystem/grpc-gateway/third_party/googleapis {{end}}-I . \
 		-I$(GOPATH)/src \
 		--go_out=plugins=grpc:. \
 		pb/**/*.proto
@@ -27,10 +27,18 @@ vproto: ## Compile protobuf validator
 		-I$(GOPATH)/src \
 		-I ${GOPATH}/src/github.com/envoyproxy/protoc-gen-validate \
 		--validate_out=lang=go:. \
-		pb/**/*.proto
+		pb/**/*.proto{{if .GrpcGateway}}
+
+.PHONY: gwproto
+gwproto:
+	@protoc -I/usr/local/include -I. \
+		-I$(GOPATH)/src \
+		-I$(GOPATH)/src/github.com/grpc-ecosystem/grpc-gateway/third_party/googleapis \
+		--grpc-gateway_out=logtostderr=true:. \
+		pb/**/*.proto{{end}}
 {{end}}
 .PHONY: build
-build: {{if .RPC}}proto{{end}} {{if .Twirp}}tproto{{end}} ## Build application{{if .RPC}} and compile protobuf for golang{{end}}
+build: {{if .RPC}}proto{{end}}{{if .Twirp}} tproto{{end}}{{if .GrpcGateway}} gwproto{{end}} ## Build application
 	@go clean
 	@CGO_ENABLED=0 \
 	GOOS=linux \
